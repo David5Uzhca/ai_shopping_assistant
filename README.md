@@ -153,6 +153,7 @@ Asegúrate de ejecutar los scripts SQL ubicados en `db/` en tu base de datos Pos
 
 ## Autores
 Juan David Uzhca\
-Domenika Sofia Delgado
+Domenika Sofia Delgado\
+Irar Nankamai
 
 Desarrollado como parte del proyecto de Agentes Avanzados (AgentLM / NovaShop).
