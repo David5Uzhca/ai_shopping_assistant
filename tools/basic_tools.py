@@ -1,12 +1,6 @@
 from data.supermarket_data import SUPERMARKET_INFO, PRODUCT_LOCATIONS
 
 def get_supermarket_hour(day: str = "monday") -> str:
-    """
-    Obtiene el horario de apertura y cierre del supermercado para un día dado.
-    
-    Args:
-        day: El día de la semana (monday_friday, saturday, sunday). Por defecto 'monday_friday'.
-    """
     day = day.lower()
     if "sabado" in day or "saturday" in day:
         key = "saturday"
@@ -19,15 +13,7 @@ def get_supermarket_hour(day: str = "monday") -> str:
     return f"El {SUPERMARKET_INFO['name']} abre: {hours} ({key})"
 
 def get_product_location(product_name: str) -> str:
-    """
-    Busca la ubicación física (pasillo/sección) de un producto en el supermercado.
-    
-    Args:
-        product_name: Nombre del producto a buscar.
-    """
     product_name = product_name.lower()
-    
-    # Búsqueda simple por coincidencia de texto
     for key, location in PRODUCT_LOCATIONS.items():
         if key in product_name or product_name in key:
             return f"El producto '{key}' se encuentra en: {location}"
@@ -35,7 +21,6 @@ def get_product_location(product_name: str) -> str:
     return f"No encontré información sobre la ubicación de '{product_name}'. Por favor consulta con un empleado."
 
 def get_supermarket_details() -> str:
-    """Obtiene información general del supermercado (nombre, dirección, contacto, servicios)."""
     info = SUPERMARKET_INFO
     return f"""
     Nombre: {info['name']}

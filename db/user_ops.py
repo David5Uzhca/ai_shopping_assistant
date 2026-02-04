@@ -1,8 +1,4 @@
-
-"""
-Módulo para operaciones de usuarios (User Repository).
-Maneja creación, autenticación y búsquedas en la BD.
-"""
+"""Módulo para operaciones de usuarios (creación, autenticación y búsqueda)"""
 from typing import Optional, Dict, Any
 from db.connection import execute_query, execute_update
 from passlib.context import CryptContext
@@ -20,10 +16,6 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 def create_user(user_data: Dict[str, Any]) -> str:
-    """
-    Crea un nuevo usuario en la base de datos.
-    Retorna el ID del usuario creado o lanza una excepción si falla.
-    """
     query = """
     INSERT INTO users (
         first_name, last_name, gender, age, 
@@ -34,7 +26,6 @@ def create_user(user_data: Dict[str, Any]) -> str:
     ) RETURNING user_id;
     """
     
-    # Hashear contraseña antes de guardar
     hashed_pwd = get_password_hash(user_data["password"])
     
     params = (
@@ -53,7 +44,6 @@ def create_user(user_data: Dict[str, Any]) -> str:
             return str(results[0]["user_id"])
         raise Exception("No se pudo obtener el ID del usuario creado.")
     except Exception as e:
-        # Manejo básico de errores de duplicados (Postgres lanza error de integridad)
         if "unique constraint" in str(e).lower():
             if "email" in str(e).lower():
                 raise ValueError("El correo electrónico ya está registrado.")
@@ -62,9 +52,6 @@ def create_user(user_data: Dict[str, Any]) -> str:
         raise e
 
 def authenticate_user(email: str, password: str) -> Optional[Dict[str, Any]]:
-    """
-    Verifica credenciales. Retorna los datos del usuario si es válido, o None.
-    """
     query = """
     SELECT user_id, first_name, last_name, email, password_hash, age, gender 
     FROM users 
@@ -79,7 +66,6 @@ def authenticate_user(email: str, password: str) -> Optional[Dict[str, Any]]:
     user = results[0]
     
     if verify_password(password, user["password_hash"]):
-        # No devolver el hash
         user.pop("password_hash")
         return user
         

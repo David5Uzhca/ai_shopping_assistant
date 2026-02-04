@@ -3,14 +3,12 @@ from db.connection import execute_query, execute_update
 
 def get_or_create_active_cart(user_id: str) -> str:
     """Obtiene el ID del carrito activo o crea uno nuevo."""
-    # Buscar carrito activo
     query = "SELECT cart_id FROM carts WHERE user_id = %s AND status = 'active' LIMIT 1"
     results = execute_query(query, (user_id,))
     
     if results:
         return str(results[0]["cart_id"])
     
-    # Crear nuevo si no existe
     insert_query = "INSERT INTO carts (user_id, status) VALUES (%s, 'active') RETURNING cart_id"
     results = execute_query(insert_query, (user_id,))
     return str(results[0]["cart_id"])
@@ -19,14 +17,11 @@ def add_item_to_cart(user_id: str, product_id: str, quantity: int = 1) -> str:
     """Agrega un item al carrito. Si ya existe, suma la cantidad."""
     cart_id = get_or_create_active_cart(user_id)
     
-    # Verificar si el producto existe en la tabla de productos (opcional pero recomendado)
     prod_check = execute_query("SELECT product_name FROM product_stocks WHERE product_id = %s", (product_id,))
     if not prod_check:
         return f"Error: Producto '{product_id}' no encontrado."
     product_name = prod_check[0]["product_name"]
 
-    # Upsert (Insertar o Actualizar)
-    # Postgres 9.5+ soporta ON CONFLICT
     query = """
     INSERT INTO cart_items (cart_id, product_id, quantity)
     VALUES (%s, %s, %s)

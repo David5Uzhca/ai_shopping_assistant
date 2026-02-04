@@ -9,17 +9,7 @@ def search_products(
     product_sku: Optional[str] = None,
     product_id: Optional[str] = None
 ) -> str:
-    """
-    Busca productos en la base de datos por nombre, SKU o ID.
-    
-    Args:
-        product_name: Nombre del producto (búsqueda parcial, case-insensitive)
-        product_sku: SKU exacto del producto
-        product_id: ID exacto del producto
-    
-    Returns:
-        String con información formateada de los productos encontrados
-    """
+    """    Busca productos en la base de datos por nombre, SKU o ID.    """
     conditions = []
     params = []
     
@@ -69,16 +59,16 @@ def search_products(
         if len(results) == 1:
             p = results[0]
             return f"""
-{p['product_name']}
-- ID: {p['product_id']}
-- SKU: {p['product_sku']}
-- Proveedor: {p['supplier_name']}
-- Precio unitario: ${p['unit_cost']:.2f}
-- Stock disponible: {p['quantity_available']} unidades (Total: {p['quantity_on_hand']}, Reservadas: {p['quantity_reserved']})
-- Ubicación: {p['warehouse_location']}
-- Estado: {'Disponible' if p['stock_status'] == 1 else 'No disponible'}
-- Valor total en inventario: ${p['total_value']:.2f}
-"""
+            {p['product_name']}
+            - ID: {p['product_id']}
+            - SKU: {p['product_sku']}
+            - Proveedor: {p['supplier_name']}
+            - Precio unitario: ${p['unit_cost']:.2f}
+            - Stock disponible: {p['quantity_available']} unidades (Total: {p['quantity_on_hand']}, Reservadas: {p['quantity_reserved']})
+            - Ubicación: {p['warehouse_location']}
+            - Estado: {'Disponible' if p['stock_status'] == 1 else 'No disponible'}
+            - Valor total en inventario: ${p['total_value']:.2f}
+            """
         else:
             # Múltiples resultados
             response = f"Se encontraron {len(results)} productos:\n\n"
@@ -90,15 +80,7 @@ def search_products(
         return f"Error al buscar productos: {str(e)}"
 
 def compare_products(product_names: List[str]) -> str:
-    """
-    Compara múltiples productos mostrando sus características lado a lado.
-    
-    Args:
-        product_names: Lista de nombres de productos a comparar
-    
-    Returns:
-        String con tabla comparativa de los productos
-    """
+    """    Compara múltiples productos mostrando sus características lado a lado.    """
     if not product_names or len(product_names) < 2:
         return "Necesitas proporcionar al menos 2 nombres de productos para comparar."
     
@@ -183,13 +165,7 @@ def process_purchase(product_id: str, quantity: int = 1) -> str:
     """
     Procesa una compra: reduce el stock disponible del producto.
     Actualiza quantity_on_hand restando la cantidad comprada.
-    
-    Args:
-        product_id: ID del producto (ej: 'PROD-CEL-03')
-        quantity: Cantidad a comprar (default: 1)
-    
-    Returns:
-        String con confirmación de la compra o mensaje de error
+
     """
     if quantity <= 0:
         return "La cantidad debe ser mayor a 0."
@@ -241,16 +217,14 @@ def process_purchase(product_id: str, quantity: int = 1) -> str:
         
         return f"""¡Compra completada exitosamente!
 
-Producto: {product['product_name']} (SKU: {product['product_sku']})
-Precio unitario: ${product['unit_cost']:.2f}
-Cantidad comprada: {quantity} unidad(es)
-Total pagado: ${total_cost:.2f}
-Stock actualizado: 
-   - Antes: {product['quantity_on_hand']} unidades totales, {product['quantity_available']} disponibles
-   - Ahora: {updated_product['quantity_on_hand']} unidades totales, {updated_product['quantity_available']} disponibles
+        Producto: {product['product_name']} (SKU: {product['product_sku']})
+        Precio unitario: ${product['unit_cost']:.2f}
+        Cantidad comprada: {quantity} unidad(es)
+        Total pagado: ${total_cost:.2f}
+        Stock actualizado: 
+        - Antes: {product['quantity_on_hand']} unidades totales, {product['quantity_available']} disponibles
+        - Ahora: {updated_product['quantity_on_hand']} unidades totales, {updated_product['quantity_available']} disponibles
 
-Tu pedido ha sido procesado correctamente."""
-        
+        Tu pedido ha sido procesado correctamente."""
     except Exception as e:
         return f"Error al procesar la compra: {str(e)}"
-

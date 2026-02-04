@@ -58,7 +58,6 @@ def get_or_create_chat(session_id: Optional[str] = None, user_id: Optional[str] 
             """
             
             # Cargar historial previo de la BD
-            # Gemini espera: [{'role': 'user', 'parts': [{'text': 'texto'}]}]
             db_history = get_recent_chat_history(user_id, limit=20)
             for msg in db_history:
                 history_for_model.append({
@@ -80,7 +79,7 @@ def get_or_create_chat(session_id: Optional[str] = None, user_id: Optional[str] 
             checkout_cart_tool
         ]
         
-        system_instruction = f"""Eres un asistente útil de un supermercado (AgentLM). 
+        system_instruction = f"""Eres un asistente útil de una tienda de electrónica (NovaShop). 
         
         {user_context}
         

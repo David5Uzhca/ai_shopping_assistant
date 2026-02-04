@@ -1,21 +1,13 @@
 
 from typing import Optional
 from langchain_core.tools import tool
-# Importación relativa para que funcione tanto como módulo como script independiente
 try:
     from data.supermarket_data import SUPERMARKET_INFO, PRODUCT_LOCATIONS
 except ImportError:
-    # Fallback si se ejecuta desde carpetas superiores (aunque no debería pasar en el modo standalone)
     from agent_lm.data.supermarket_data import SUPERMARKET_INFO, PRODUCT_LOCATIONS
 
 @tool
 def get_supermarket_hour(day: str = "monday") -> str:
-    """
-    Obtiene el horario de apertura y cierre del supermercado.
-    
-    Args:
-        day: El día de la semana (monday_friday, saturday, sunday). Por defecto 'monday_friday'.
-    """
     day = day.lower()
     if "sabado" in day or "saturday" in day:
         key = "saturday"
@@ -29,14 +21,7 @@ def get_supermarket_hour(day: str = "monday") -> str:
 
 @tool
 def get_product_location(product_name: str) -> str:
-    """
-    Busca la ubicación física (pasillo/sección) de un producto en el supermercado.
-    
-    Args:
-        product_name: Nombre del producto a buscar.
-    """
     product_name = product_name.lower()
-    
     # Búsqueda simple por coincidencia de texto
     for key, location in PRODUCT_LOCATIONS.items():
         if key in product_name or product_name in key:
@@ -46,7 +31,6 @@ def get_product_location(product_name: str) -> str:
 
 @tool
 def get_supermarket_details() -> str:
-    """Obtiene información general del supermercado (nombre, dirección, contacto)."""
     info = SUPERMARKET_INFO
     return f"""
     Nombre: {info['name']}
