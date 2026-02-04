@@ -1,6 +1,6 @@
 # NovaShop (AgentLM) - Asistente de Supermercado con IA
 
-Este proyecto implementa un asistente virtual inteligente para un supermercado, capaz de interactuar con usuarios mediante texto y **voz**, gestionar carritos de compras, buscar productos y mantener una memoria persistente de las conversaciones. Utiliza **Google Gemini** como cerebro y **FastAPI** + **React** para la infraestructura.
+Este proyecto implementa un asistente virtual inteligente para un supermercado, capaz de interactuar con usuarios mediante texto y **voz**, gestionar carritos de compras, buscar productos y mantener una memoria persistente de las conversaciones. Utiliza **Google Gemini** como cerebro, **FastAPI + GraphQL** para la infraestructura.
 
 ## Tabla de Contenidos
 1. [Arquitectura del Sistema](#arquitectura-del-sistema)
@@ -8,18 +8,18 @@ Este proyecto implementa un asistente virtual inteligente para un supermercado, 
 3. [Características Principales](#características-principales)
 4. [Estructura del Proyecto](#estructura-del-proyecto)
 5. [Configuración y Ejecución](#configuración-y-ejecución)
-6. [Base de Datos](#base-de-datos)
+6. [GraphQL API](#graphql-api)
 
 ---
 
 ## Arquitectura del Sistema
 
-El sistema sigue una arquitectura cliente-servidor moderna:
+El sistema sigue una arquitectura moderna orientada a servicios y GraphQL:
 
-- **Frontend**: Aplicación **React** (Vite + TypeScript) que maneja la interfaz de usuario, captura de audio (Web Speech API) y comunicación con el backend.
-- **Backend**: API RESTful construida con **FastAPI** (Python). Actúa como orquestador entre el usuario, la base de datos y el modelo de IA.
-- **AI Core**: Integración con **Google Gemini 2.0 Flash** (o versiones superiores) utilizando *Function Calling* para ejecutar herramientas reales (consultar precios, stock, agregar al carrito).
-- **Base de Datos**: **PostgreSQL** para persistencia de usuarios, inventario, carritos de compra e historial de chat.
+- **Frontend**: Aplicación **React** (Vite + TypeScript) que consume una única API GraphQL.
+- **Backend**: Servidor **FastAPI** que monta un endpoint GraphQL (`/graphql`) usando **Strawberry**.
+- **AI Core**: Servicio centralizado (`GeminiService`) que gestiona sesiones, historial y llamadas a herramientas (precios, stock).
+- **Base de Datos**: **PostgreSQL** para persistencia de usuarios, inventario, carritos e historial de chat.
 
 ---
 
@@ -27,18 +27,16 @@ El sistema sigue una arquitectura cliente-servidor moderna:
 
 ### Backend
 - **Python 3.10+**
-- **FastAPI**: Framework web de alto rendimiento.
-- **Google GenAI SDK**: Para la interacción con modelos Gemini.
-- **Psycopg2**: Adaptador de base de datos PostgreSQL.
-- **Pydantic**: Validación de datos.
+- **FastAPI**: Servidor web.
+- **Strawberry GraphQL**: Framework para definir el esquema y resolutores.
+- **Google GenAI SDK**: Integración con Gemini.
+- **Psycopg2**: Conexión a BD.
 - **Uvicorn**: Servidor ASGI.
 
 ### Frontend
-- **React 18**
-- **TypeScript**
-- **Vite**: Build tool.
-- **CSS Modules / Vanilla CSS**: Estilizado personalizado y "glassmorphism".
-- **Web Speech API**: Reconocimiento y síntesis de voz nativa del navegador.
+- **React 18** + **TypeScript**.
+- **Apollo Client / Fetch**: Para realizar queries y mutaciones.
+- **Web Speech API**: Voz nativa.
 
 ### Datos
 - **PostgreSQL**: Motor de base de datos relacional.
@@ -47,19 +45,17 @@ El sistema sigue una arquitectura cliente-servidor moderna:
 
 ## Características Principales
 
-1.  **Chatbot Conversacional**: Interfaz de chat natural con memoria a largo plazo (los mensajes se guardan en BD y se recargan al iniciar sesión).
-2.  **Interacción por Voz (Voice Mode)**:
-    -   Activación mediante comandos ("hablemos directamente") o botón dedicado.
-    -   Avatar animado (ShopiBOT) con estados visuales (escuchando, pensando, hablando).
-    -   Respuestas habladas automáticas.
-3.  **Gestión de Inventario y Ventas**:
-    -   Consulta de productos en tiempo real (precio, stock, ubicación).
-    -   Comparación de productos (generación de tablas comparativas).
-4.  **Carrito de Compras Inteligente**:
-    -   El usuario puede decir "agrega dos coca colas" y la IA detecta el producto, verifica stock y lo agrega.
-    -   Checkout y actualización de inventario.
-5.  **Personalidad Adaptativa**:
-    -   El agente adapta su tono según la edad del usuario (ej. jerga local para jóvenes, tono formal para adultos).
+1.  **Arquitectura 100% GraphQL**:
+    -   Un único endpoint (`/graphql`) para autenticación, chat y operaciones.
+    -   Tipado fuerte y esquemas claros.
+2.  **Chatbot Conversacional con Memoria**:
+    -   El agente recuerda conversaciones pasadas gracias a la persistencia en BD.
+    -   Personalidad adaptable según el perfil del usuario (edad, ubicación).
+3.  **Interacción por Voz (ShopiBOT)**:
+    -   Avatar animado con estados reactivos.
+    -   Control por voz completo (Speech-to-Text y Text-to-Speech).
+4.  **Gestión Inteligente**:
+    -   Búsqueda de productos, comparación de precios y gestión de carritos mediante *Function Calling*.
 
 ---
 
@@ -67,22 +63,46 @@ El sistema sigue una arquitectura cliente-servidor moderna:
 
 ```
 agent_lm/
-├── api.py                  # Punto de entrada del Backend (FastAPI app)
-├── .env                    # Variables de entorno (API Keys, DB creds)
-├── db/                     # Lógica de Base de Datos
-│   ├── connection.py       # Pool de conexiones PostgreSQL
-│   ├── user_ops.py         # CRUD de Usuarios
-│   ├── chat_ops.py         # Persistencia de historial de chat
-│   └── scripts_sql/        # Scripts de creación de tablas
-├── tools/                  # Herramientas para la IA (Function Calling)
-│   ├── product_tools.py    # Búsqueda y comparación de productos
-│   ├── cart_tools.py       # Lógica del carrito de compras
-│   └── basic_tools.py      # Información general del local
-└── frontend/               # Aplicación React
-    ├── src/
-    │   ├── ui/             # Componentes (App, VoiceChat, Login)
-    │   └── lib/            # Cliente API
-    └── public/             # Assets (imágenes del robot)
+├── api.py                  # Entry Point. Monta Strawberry GraphQL.
+├── graphql_schema.py       # Definición de Tipos (Query, Mutation, UserType).
+├── services/
+│   └── gemini_service.py   # Lógica conversacional y gestión de sesiones AI.
+├── db/                     # Capa de datos (Usuarios, Chat, Carrito).
+├── tools/                  # Herramientas para la IA (Function Calling).
+├── frontend/               # Aplicación React consumiendo GraphQL.
+└── .env                    # Configuración.
+```
+
+---
+
+## GraphQL API
+
+El backend expone un playground interactivo en `http://localhost:8000/graphql`.
+
+### Ejemplos de Mutaciones
+
+**1. Iniciar Conversación (Chat):**
+```graphql
+mutation {
+  chat(
+    message: "Hola, necesito leche deslactosada", 
+    userId: "UUID-DEL-USUARIO"
+  ) {
+    response
+    sessionId
+  }
+}
+```
+
+**2. Iniciar Sesión:**
+```graphql
+mutation {
+  login(email: "juan@example.com", password: "123") {
+    userId
+    firstName
+    token
+  }
+}
 ```
 
 ---
