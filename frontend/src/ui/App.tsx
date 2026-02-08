@@ -24,7 +24,7 @@ export function App() {
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
-      text: "Hola, soy tu asistente del supermercado. ¿En qué te ayudo?"
+      text: "Hola, soy tu asistente de NOVAshop. ¿En qué te ayudo?"
     }
   ]);
   const [input, setInput] = useState("");
@@ -50,11 +50,10 @@ export function App() {
   const handleAuthSuccess = (userData: any) => {
     setUser(userData);
     setView("chat");
-    // Personalizar saludo inicial si es nueva sesión o si el chat estaba vacío/default
     if (!sessionId || messages.length <= 1) {
       setMessages([{
         role: "assistant",
-        text: `Hola ${userData.first_name}, soy tu asistente del supermercado. ¿En qué te ayudo hoy?`
+        text: `Hola ${userData.first_name}, soy tu asistente de NOVAshop. ¿En qué te ayudo hoy?`
       }]);
     }
   };
@@ -66,7 +65,7 @@ export function App() {
     setView("login");
     setMessages([{
       role: "assistant",
-      text: "Hola, soy tu asistente del supermercado. ¿En qué te ayudo?"
+      text: "Hola, soy tu asistente de NOVAshop. ¿En qué te ayudo?"
     }]);
   }
 
@@ -163,7 +162,7 @@ export function App() {
           <div className="logo">N</div>
           <div className="brandText">
             <div className="title">NovaShop</div>
-            <div className="subtitle">LLM Agent + Tools (Supermercado)</div>
+            <div className="subtitle">LLM Agent + Tools (Electrónica)</div>
           </div>
         </div>
         <div className="actions" style={{ display: "flex", gap: "10px" }}>

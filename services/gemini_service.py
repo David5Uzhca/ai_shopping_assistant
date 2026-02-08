@@ -66,6 +66,7 @@ def get_or_create_chat(session_id: Optional[str] = None, user_id: Optional[str] 
                 })
 
     if not session_id or session_id not in chat_sessions:
+        print("[GEMINI] 🆕 Creating new chat session...")
         new_session_id = str(uuid.uuid4())
         
         tools = [
@@ -88,6 +89,17 @@ def get_or_create_chat(session_id: Optional[str] = None, user_id: Optional[str] 
         IMPORTANTE: SIEMPRE que uses herramientas de carrito (add_product_to_cart_tool, view_cart_tool, checkout_cart_tool),
         DEBES pasar este ID "{user_id if user_id else ''}" como el argumento `user_id`. No preguntes el ID al usuario.
 
+        OBJETIVO PRINCIPAL: AHORRO DE PALABRAS (CRÍTICO)
+        - Tu salida se convierte a audio pago. CADA CARÁCTER CUENTA.
+        - Sé EXTREMADAMENTE conciso y directo, pero sin olvidar signos de puntuacion.
+        - NO saludes si no es el primer mensaje. NO te despidas innecesariamente.
+        - Ve al grano. Responde la pregunta y punto, siendo amable pero no tan efusivo.
+        - Usa frases cortas. Máximo 1 o 2 oraciones si es posible.
+        - Evita palabras de relleno como "Claro que sí", "Por supuesto", "Entiendo", "Me parece genial".
+        - Si el usuario pide un producto, di el precio y características clave y ya.
+        - EJEMPLO CORRECTO: "El iPhone 15 cuesta 899 dolares y tiene 128 gigas de almacenamiento."
+        - EJEMPLO INCORRECTO: "Claro, con gusto te ayudo. El iPhone 15 es un excelente dispositivo que cuesta $899 dólares y cuenta con una capacidad de 128GB."
+
         REGLAS DE CARRITO:
         1. Para agregar items: Primero BUSCA el producto para obtener su ID exacto (product_id), luego usa `add_product_to_cart_tool`.
         2. Si el usuario quiere "terminar", "pagar" o "comprar el carrito", usa `checkout_cart_tool`.
@@ -100,7 +112,9 @@ def get_or_create_chat(session_id: Optional[str] = None, user_id: Optional[str] 
         """
 
         try:
-            print(f"Creating new chat with history len: {len(history_for_model)}")
+            print(f"[GEMINI] 📜 History loaded: {len(history_for_model)} messages")
+            print(f"[GEMINI] 🛠️ Initializing chat with {len(tools)} tools...")
+            
             chat = client.chats.create(
                 model=MODEL_ID,
                 config=types.GenerateContentConfig(
@@ -111,9 +125,10 @@ def get_or_create_chat(session_id: Optional[str] = None, user_id: Optional[str] 
                 history=history_for_model 
             )
             chat_sessions[new_session_id] = chat
+            print(f"[GEMINI] ✅ Chat created successfully (ID: {new_session_id})")
             return chat, new_session_id
         except Exception as e:
-            print(f"Error creating chat with {MODEL_ID}: {e}. Trying fallback...")
+            print(f"[GEMINI] ⚠️ Error creating chat with {MODEL_ID}: {e}. Trying fallback...")
             try:
                 chat = client.chats.create(
                     model=MODEL_FALLBACK,
@@ -125,8 +140,10 @@ def get_or_create_chat(session_id: Optional[str] = None, user_id: Optional[str] 
                     history=history_for_model
                 )
                 chat_sessions[new_session_id] = chat
+                print(f"[GEMINI] ✅ Fallback Chat created successfully (ID: {new_session_id})")
                 return chat, new_session_id
             except Exception as e2:
                  raise Exception(f"Failed to initialize AI model: {e2}")
 
+    print(f"[GEMINI] 🔄 Resuming session: {session_id}")
     return chat_sessions[session_id], session_id

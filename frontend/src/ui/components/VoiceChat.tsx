@@ -22,7 +22,18 @@ export function VoiceChat({ sessionId, user, onClose, onUpdateSession }: VoiceCh
 
     useEffect(() => {
         // Initialize Speech Recognition
+        console.log("[VOICE] Initializing SpeechRecognition...");
+
+        // Fix #1: Load voices proactively
+        const loadVoices = () => {
+            const voices = window.speechSynthesis.getVoices();
+            console.log("[VOICE] 🎙️ Available voices:", voices.length);
+        };
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        loadVoices();
+
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
             recognition.continuous = false;
@@ -30,27 +41,41 @@ export function VoiceChat({ sessionId, user, onClose, onUpdateSession }: VoiceCh
             recognition.interimResults = false;
 
             recognition.onstart = () => {
+                console.log("[VOICE] 🟢 Recognition started (Listening)");
                 setState("listening");
             };
 
             recognition.onend = () => {
-                // If we were just listening and it stopped without processing (e.g. silence), go back to waiting
-                // But if we have a result, handleResult will fire before onend usually.
-                // We'll handle state transition in onresult.
-                // If state is still listening, it means no result.
-                // setState(prev => prev === "listening" ? "waiting" : prev);
+                console.log("[VOICE] 🔴 Recognition ended");
+                // Si termina y seguíamos escuchando, volvemos a waiting.
+                // Si cambiamos a "thinking" (en onresult), no tocamos el estado.
+                setState(prev => prev === "listening" ? "waiting" : prev);
             };
 
-            recognition.onresult = async (event: any) => {
+            recognition.onerror = (event: any) => {
+                console.error("[VOICE] ⚠️ Recognition Error:", event.error);
+                setState("waiting");
+                if (event.error === 'not-allowed') {
+                    alert("Permiso de micrófono denegado.");
+                }
+            };
+
+            recognition.onresult = (event: any) => {
                 const text = event.results[0][0].transcript;
+                console.log("[VOICE] 📝 Transcript received:", text);
                 setTranscript(text);
+                // Transición inmediata a thinking para evitar race conditions con onend
+                setState("thinking");
                 handleUserMessage(text);
             };
 
             recognitionRef.current = recognition;
+        } else {
+            console.warn("[VOICE] Speech Recognition API NOT supported in this browser.");
         }
 
         return () => {
+            console.log("[VOICE] Cleanup component");
             if (recognitionRef.current) {
                 recognitionRef.current.abort();
             }
@@ -59,45 +84,140 @@ export function VoiceChat({ sessionId, user, onClose, onUpdateSession }: VoiceCh
     }, []);
 
     const handleUserMessage = async (text: string) => {
+        console.log("[VOICE] 🚀 Sending message to API:", text);
         setState("thinking");
         try {
             const res = await sendChatMessage({
                 message: text,
                 session_id: sessionId,
-                user_id: user?.user_id
+                user_id: user?.user_id,
+                generate_audio: true // Solicitar audio ElevenLabs
             });
 
+            console.log("[VOICE] ✅ API Response received:", res);
             onUpdateSession(res.session_id);
             setResponse(res.response);
-            speakResponse(res.response);
-        } catch (e) {
-            console.error(e);
+
+            if (res.audio) {
+                console.log("[VOICE] 🔊 Playing ElevenLabs Audio...");
+                const audio = new Audio("data:audio/mpeg;base64," + res.audio);
+
+                audio.onplay = () => {
+                    console.log("[VOICE] ▶️ Audio playing");
+                    setState("speaking");
+                };
+
+                audio.onended = () => {
+                    console.log("[VOICE] ⏹️ Audio finished");
+                    setState("waiting");
+                };
+
+                audio.onerror = (e) => {
+                    console.error("[VOICE] ❌ Audio playback error:", e);
+                    setState("waiting");
+                };
+
+                await audio.play();
+            } else {
+                console.warn("[VOICE] ⚠️ No audio received, falling back to browser TTS");
+                speakResponse(res.response); // Fallback
+            }
+
+        } catch (e: any) {
+            console.error("[VOICE] ❌ API Error:", e);
             speakResponse("Lo siento, hubo un error. Intenta de nuevo.");
         }
     };
 
     const speakResponse = (text: string) => {
+        console.log("[VOICE] 🗣️ Speaking response:", text);
+        // Cancelar cualquier lectura anterior para que hable lo nuevo inmediatamente
+        synthesisRef.current.cancel();
+
+        // Fix #2: Select Voice
+        const voices = synthesisRef.current.getVoices();
+        const spanishVoice = voices.find(v => v.lang.startsWith("es"));
+
+        if (!spanishVoice) {
+            console.warn("[VOICE] ⚠️ No Spanish voice found, using default");
+        } else {
+            console.log("[VOICE] 🗣️ Using voice:", spanishVoice.name);
+        }
+
         setState("speaking");
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = "es-ES";
+
+        if (spanishVoice) {
+            utterance.voice = spanishVoice;
+        }
+
+        utterance.volume = 1;
+        utterance.rate = 1;
+        utterance.pitch = 1;
+
+        utterance.onstart = () => {
+            console.log("[VOICE] 🔊 Speech started");
+            setState("speaking");
+        };
+
         utterance.onend = () => {
+            console.log("[VOICE] 🔇 Speaking finished");
             setState("waiting");
         };
+
+        utterance.onerror = (e) => {
+            console.error("[VOICE] ❌ Speech Error:", e);
+            setState("waiting");
+        };
+
         synthesisRef.current.speak(utterance);
     };
 
-    const startListening = () => {
-        if (recognitionRef.current) {
-            try {
-                recognitionRef.current.start();
-            } catch (e) {
-                // If already started
-                console.log(e);
+    // Fix #3: Unlock Audio Context
+    const unlockAudio = () => {
+        const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
+        if (AudioContext) {
+            const ctx = new AudioContext();
+            if (ctx.state === "suspended") {
+                ctx.resume().then(() => console.log("[VOICE] 🔊 AudioContext resumed"));
             }
-        } else {
-            alert("Tu navegador no soporta reconocimiento de voz.");
         }
     };
+
+    const startListening = async () => {
+        console.log("[VOICE] Start listening requested");
+        unlockAudio(); // Try to unlock audio
+
+        if (!recognitionRef.current) {
+            alert("Tu navegador no soporta reconocimiento de voz.");
+            return;
+        }
+
+        const hasPermission = await requestMicPermission();
+        if (!hasPermission) return;
+
+        try {
+            recognitionRef.current.start();
+        } catch (e) {
+            console.log("[VOICE] Recognition start error (already started?):", e);
+        }
+    };
+
+
+    const requestMicPermission = async () => {
+        console.log("[VOICE] Requesting Mic Permission...");
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+            console.log("[VOICE] ✅ Mic Permission GRANTED");
+            return true;
+        } catch (err) {
+            console.error("[VOICE] 🚫 Mic Permission DENIED", err);
+            alert("Debes permitir el micrófono para usar esta función.");
+            return false;
+        }
+    };
+
 
     // Determine Image
     const getPetImage = () => {
@@ -108,6 +228,8 @@ export function VoiceChat({ sessionId, user, onClose, onUpdateSession }: VoiceCh
             default: return "/pet/petWait.png";
         }
     };
+
+
 
     return (
         <div className="voiceChatOverlay">
@@ -120,7 +242,6 @@ export function VoiceChat({ sessionId, user, onClose, onUpdateSession }: VoiceCh
                     className={`petImage ${state}`}
                 />
 
-                {/* Status Text/Transcript */}
                 <div className="petStatus">
                     {state === "listening" && <p className="listening">Escuchando...</p>}
                     {state === "thinking" && <p className="thinking">Pensando...</p>}

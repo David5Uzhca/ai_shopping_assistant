@@ -2,12 +2,15 @@ from typing import Optional
 from db.cart_ops import add_item_to_cart, get_cart_details, remove_item_from_cart, validate_and_checkout, clear_cart
 from tools.product_tools import search_products # Helper para identificar productos
 
-def add_product_to_cart_tool(user_id: str, product_query: str, quantity: int = 1) -> str:
+def add_product_to_cart_tool(user_id: str, product_id: str, quantity: int = 1) -> str:
+    """
+    Agrega un producto al carrito usando su product_id exacto.
+    """
     if not user_id:
         return "Error: No se identificó al usuario. Inicia sesión primero."
-    if " " in product_query or len(product_query) > 10: 
-       pass 
+    
     try:
+        # Validamos que product_id parezca un ID (opcional, pero buena práctica)
         return add_item_to_cart(user_id, product_id, quantity)
     except Exception as e:
         return f"Error agregando al carrito: {str(e)}"

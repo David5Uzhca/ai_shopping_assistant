@@ -23,15 +23,18 @@ export interface RegisterRequest {
   password: string;
 }
 
+
 export interface ChatRequest {
   message: string;
   session_id?: string | null;
   user_id?: string | null;
+  generate_audio?: boolean; // Nuevo: Solicitar audio
 }
 
 export interface ChatResponse {
   response: string;
   session_id: string;
+  audio?: string; // Nuevo: Audio en Base64
 }
 
 // --- Helper Functions ---
@@ -126,6 +129,7 @@ export async function sendChatMessage(payload: ChatRequest): Promise<ChatRespons
   // Manejo de valores nulos para el string interpolation
   const sessionIdArg = payload.session_id ? `"${payload.session_id}"` : "null";
   const userIdArg = payload.user_id ? `"${payload.user_id}"` : "null";
+  const generateAudioArg = payload.generate_audio ? "true" : "false";
 
   // Limpiamos el mensaje de comillas dobles que rompan la query
   const safeMessage = payload.message.replace(/"/g, '\\"').replace(/\n/g, "\\n");
@@ -135,10 +139,12 @@ export async function sendChatMessage(payload: ChatRequest): Promise<ChatRespons
       chat(
         message: "${safeMessage}",
         sessionId: ${sessionIdArg},
-        userId: ${userIdArg}
+        userId: ${userIdArg},
+        generateAudio: ${generateAudioArg}
       ) {
         response
         sessionId
+        audio
       }
     }
   `;
@@ -146,7 +152,8 @@ export async function sendChatMessage(payload: ChatRequest): Promise<ChatRespons
   const data = await graphqlRequest(mutation);
   return {
     response: data.chat.response,
-    session_id: data.chat.sessionId // Strawberry camelCase
+    session_id: data.chat.sessionId, // Strawberry camelCase
+    audio: data.chat.audio
   };
 }
 

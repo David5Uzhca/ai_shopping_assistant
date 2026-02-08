@@ -14,40 +14,45 @@ def search_products(
     params = []
     
     if product_id:
-        conditions.append("product_id = %s")
+        conditions.append("ps.product_id = %s")
         params.append(product_id)
     elif product_sku:
-        conditions.append("product_sku = %s")
+        conditions.append("ps.product_sku = %s")
         params.append(product_sku)
     elif product_name:
-        conditions.append("LOWER(product_name) LIKE LOWER(%s)")
+        conditions.append("LOWER(ps.product_name) LIKE LOWER(%s)")
         params.append(f"%{product_name}%")
     else:
         # Si no hay filtros, retornar todos los productos activos
-        conditions.append("is_active = true")
+        conditions.append("ps.is_active = true")
     
-    where_clause = " AND ".join(conditions) if conditions else "is_active = true"
+    where_clause = " AND ".join(conditions) if conditions else "ps.is_active = true"
     
     query = f"""
         SELECT 
-            product_id,
-            product_name,
-            product_sku,
-            supplier_name,
-            quantity_on_hand,
-            quantity_reserved,
-            quantity_available,
-            minimum_stock_level,
-            reorder_point,
-            optimal_stock_level,
-            unit_cost,
-            total_value,
-            warehouse_location,
-            stock_status,
-            notes
-        FROM product_stocks
+            ps.product_id,
+            ps.product_name,
+            ps.product_sku,
+            ps.supplier_name,
+            ps.quantity_on_hand,
+            ps.quantity_reserved,
+            ps.quantity_available,
+            ps.minimum_stock_level,
+            ps.reorder_point,
+            ps.optimal_stock_level,
+            ps.unit_cost,
+            ps.total_value,
+            ps.warehouse_location,
+            ps.stock_status,
+            ps.notes,
+            po.discount_percentage,
+            po.description as offer_desc
+        FROM product_stocks ps
+        LEFT JOIN product_offers po ON ps.product_id = po.product_id 
+            AND po.is_active = true 
+            AND NOW() BETWEEN po.start_date AND po.end_date
         WHERE {where_clause}
-        ORDER BY product_name
+        ORDER BY ps.product_id -- Orden deterministico
     """
     
     try:
@@ -58,22 +63,36 @@ def search_products(
         
         if len(results) == 1:
             p = results[0]
+            price_str = f"${p['unit_cost']:.2f}"
+            
+            # Lógica de Oferta
+            if p['discount_percentage']:
+                discount = float(p['discount_percentage'])
+                original_price = float(p['unit_cost'])
+                final_price = original_price * (1 - discount / 100)
+                price_str = f"${final_price:.2f} (Oferta: {discount}% OFF - Precio Normal: ${original_price:.2f} - {p['offer_desc']})"
+
             return f"""
-            {p['product_name']}
-            - ID: {p['product_id']}
-            - SKU: {p['product_sku']}
-            - Proveedor: {p['supplier_name']}
-            - Precio unitario: ${p['unit_cost']:.2f}
-            - Stock disponible: {p['quantity_available']} unidades (Total: {p['quantity_on_hand']}, Reservadas: {p['quantity_reserved']})
-            - Ubicación: {p['warehouse_location']}
-            - Estado: {'Disponible' if p['stock_status'] == 1 else 'No disponible'}
-            - Valor total en inventario: ${p['total_value']:.2f}
-            """
+{p['product_name']}
+- ID: {p['product_id']}
+- SKU: {p['product_sku']}
+- Proveedor: {p['supplier_name']}
+- Precio: {price_str}
+- Stock disponible: {p['quantity_available']} unidades (Total: {p['quantity_on_hand']}, Reservadas: {p['quantity_reserved']})
+- Ubicación: {p['warehouse_location']}
+- Estado: {'Disponible' if p['stock_status'] == 1 else 'No disponible'}
+"""
         else:
             # Múltiples resultados
             response = f"Se encontraron {len(results)} productos:\n\n"
             for i, p in enumerate(results, 1):
-                response += f"{i}. {p['product_name']} (SKU: {p['product_sku']}) - ${p['unit_cost']:.2f} - Stock: {p['quantity_available']} unidades\n"
+                price_display = f"${p['unit_cost']:.2f}"
+                if p['discount_percentage']:
+                    discount = float(p['discount_percentage'])
+                    final_price = float(p['unit_cost']) * (1 - discount / 100)
+                    price_display = f"${final_price:.2f} (Oferta {discount}%)"
+                
+                response += f"{i}. {p['product_name']} (SKU: {p['product_sku']}) - {price_display} - Stock: {p['quantity_available']} unidades\n"
             return response
             
     except Exception as e:
@@ -89,20 +108,25 @@ def compare_products(product_names: List[str]) -> str:
     for name in product_names:
         query = """
             SELECT 
-                product_id,
-                product_name,
-                product_sku,
-                supplier_name,
-                quantity_on_hand,
-                quantity_reserved,
-                quantity_available,
-                unit_cost,
-                total_value,
-                warehouse_location,
-                stock_status
-            FROM product_stocks
-            WHERE LOWER(product_name) LIKE LOWER(%s) AND is_active = true
-            ORDER BY product_name
+                ps.product_id,
+                ps.product_name,
+                ps.product_sku,
+                ps.supplier_name,
+                ps.quantity_on_hand,
+                ps.quantity_reserved,
+                ps.quantity_available,
+                ps.unit_cost,
+                ps.total_value,
+                ps.warehouse_location,
+                ps.stock_status,
+                po.discount_percentage,
+                po.description as offer_desc
+            FROM product_stocks ps
+            LEFT JOIN product_offers po ON ps.product_id = po.product_id 
+                AND po.is_active = true 
+                AND NOW() BETWEEN po.start_date AND po.end_date
+            WHERE LOWER(ps.product_name) LIKE LOWER(%s) AND ps.is_active = true
+            ORDER BY ps.product_name
             LIMIT 1
         """
         try:
@@ -120,12 +144,21 @@ def compare_products(product_names: List[str]) -> str:
         return f"Algunos productos no se encontraron. Encontrados: {', '.join(found_names)}"
     
     # Construir tabla comparativa
-    response = "COMPARACIÓN DE PRODUCTOS\n\n"
+    response = "COMPARACIÓN DE PRODUCTOS (Con Ofertas)\n\n"
     response += "| Característica | " + " | ".join([p['product_name'] for p in products_data]) + " |\n"
     response += "|" + "---|" * (len(products_data) + 1) + "\n"
     
     # Precio
-    prices = [f"${p['unit_cost']:.2f}" for p in products_data]
+    # Precio
+    prices = []
+    for p in products_data:
+        if p['discount_percentage']:
+             discount = float(p['discount_percentage'])
+             final = float(p['unit_cost']) * (1 - discount / 100)
+             prices.append(f"${final:.2f} ({discount}% OFF)")
+        else:
+             prices.append(f"${p['unit_cost']:.2f}")
+    
     response += f"| Precio | {' | '.join(prices)} |\n"
     
     # Stock disponible

@@ -4,10 +4,13 @@ from services.gemini_service import get_or_create_chat
 from db.chat_ops import save_chat_message
 from db.user_ops import create_user, authenticate_user
 
+from services.elevenlabs_service import generate_voice_audio
+
 @strawberry.type
 class ChatResponseType:
     response: str
     session_id: str
+    audio: Optional[str] = None
 
 @strawberry.type
 class UserType:
@@ -26,24 +29,50 @@ class Query:
 @strawberry.type
 class Mutation:
     @strawberry.mutation
-    def chat(self, message: str, session_id: Optional[str] = None, user_id: Optional[str] = None) -> ChatResponseType:
+    def chat(
+        self, 
+        message: str, 
+        session_id: Optional[str] = None, 
+        user_id: Optional[str] = None,
+        generate_audio: bool = False
+    ) -> ChatResponseType:
+        print(f"\n[GRAPHQL] 🚀 Chat mutation received. Message start: '{message[:50]}...' | Session: {session_id} | User: {user_id}")
         try:
-            chat, real_session_id = get_or_create_chat(session_id, user_id)
+            # 1. Obtener respuesta de texto (Gemini)
+            chat_obj, real_session_id = get_or_create_chat(session_id, user_id)
             
-            # Send message to Gemini
-            response = chat.send_message(message)
-            text_response = response.text if response.text else "(Sin respuesta...)"
+            print(f"[GRAPHQL] 🧠 Sending message to Gemini Service...")
+            gemini_resp = chat_obj.send_message(message)
+            text_response = gemini_resp.text if gemini_resp.text else "(Sin respuesta...)"
+            print(f"[GRAPHQL] 🤖 Gemini response received: '{text_response[:50]}...'")
             
-            # Persist history
+            # 2. Generar Audio (ElevenLabs) si se solicita
+            audio_base64 = None
+            if generate_audio:
+                print(f"[GRAPHQL] 🔊 Audio generation requested. Calling ElevenLabs...")
+                # Usar solo la primera oración o dos para no gastar tanto crédito y ser rápido
+                # O enviar todo si es corto.
+                audio_base64 = generate_voice_audio(text_response)
+                status = "✅ Generated" if audio_base64 else "❌ Failed/Empty"
+                print(f"[GRAPHQL] {status} Audio. Length: {len(audio_base64) if audio_base64 else 0} chars")
+
+            # 3. Persistir historial
             if user_id:
+                print(f"[GRAPHQL] 💾 Saving chat history to DB...")
                 try:
                     save_chat_message(user_id, "user", message, real_session_id)
                     save_chat_message(user_id, "model", text_response, real_session_id)
                 except Exception as e:
-                    print(f"Error saving history: {e}")
+                    print(f"[GRAPHQL] ⚠️ Error saving history: {e}")
             
-            return ChatResponseType(response=text_response, session_id=real_session_id)
+            print(f"[GRAPHQL] 🏁 Chat mutation finished. Returning response.\n")
+            return ChatResponseType(
+                response=text_response, 
+                session_id=real_session_id,
+                audio=audio_base64
+            )
         except Exception as e:
+            print(f"[GRAPHQL] ❌ CRITICAL ERROR: {str(e)}")
             raise Exception(str(e))
 
     @strawberry.mutation

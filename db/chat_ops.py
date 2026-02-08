@@ -19,7 +19,6 @@ def get_recent_chat_history(user_id: str, limit: int = 50) -> List[Dict[str, Any
     """
     rows = execute_query(query, (user_id, limit))
     
-    # Invertimos para retornar en orden cronológico (viejo -> nuevo)
     return rows[::-1]
 
 def clear_chat_history(user_id: str):

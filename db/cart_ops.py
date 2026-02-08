@@ -78,7 +78,6 @@ def validate_and_checkout(user_id: str) -> str:
     if not items:
         return "El carrito está vacío."
 
-    # 1. Validar Stock
     errors = []
     for item in items:
         wanted = item["cart_qty"]
@@ -89,24 +88,17 @@ def validate_and_checkout(user_id: str) -> str:
             )
     
     if errors:
-        return "⚠️ No se puede procesar la compra por falta de stock:\n" + "\n".join(errors) + "\n\n¿Quieres que actualice tu carrito con el stock disponible?"
+        return "No se puede procesar la compra por falta de stock:\n" + "\n".join(errors) + "\n\n¿Quieres que actualice tu carrito con el stock disponible?"
 
-    # 2. Procesar Compra (Restar Stock)
-    # Idealmente esto iría en una transacción SQL única, pero lo haremos iterativo por simplicidad en este entorno,
-    # asumiendo que db/connection maneja autocommit o transacciones simples.
-    
     try:
-        receipt = "✅ **Compra Exitosa**\n\n"
+        receipt = "**Compra Exitosa**\n\n"
         for item in items:
-            # Reutilizamos lógica simple o query directa
             update_q = "UPDATE product_stocks SET quantity_on_hand = quantity_on_hand - %s, quantity_available = quantity_available - %s WHERE product_id = %s"
             execute_update(update_q, (item["cart_qty"], item["cart_qty"], item["product_id"]))
             receipt += f"- {item['cart_qty']}x {item['product_name']} (${item['unit_cost']:.2f})\n"
         
         receipt += f"\n**Total Pagado**: ${cart_data['total']:.2f}"
         
-        # 3. Vaciar Carrito (o marcar como 'ordered' y crear uno nuevo)
-        # Por simplicidad, vaciamos los items
         clear_cart(user_id)
         
         return receipt

@@ -32,7 +32,7 @@ export function Login({ onLogin, onGoToRegister }: LoginProps) {
     return (
         <div className="authContainer">
             <div className="authCard">
-                <h2 className="authTitle">Bienvenido</h2>
+                <h2 className="authTitle">NOVAshop</h2>
                 <p className="authSubtitle">Inicia sesión para continuar</p>
 
                 {error && <div className="errorBox" style={{ textAlign: "center" }}>{error}</div>}
