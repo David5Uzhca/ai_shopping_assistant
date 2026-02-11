@@ -175,7 +175,11 @@ El sistema utiliza instrucciones de sistema complejas para:
 3.  **Manejo de Errores:** Fallbacks automáticos si una herramienta (como la búsqueda de precios) falla.
 
 ---
+## Video Demostrativo
 
+▶️ [Ver demo en video](data/media/videoDEMO.mp4)
+
+---
 ## Conclusiones
 
 Este proyecto demuestra cómo la integración de Modelos de Lenguaje Grande (LLMs) con herramientas externas (Bases de Datos, APIs de Voz) puede crear experiencias de usuario profundamente inmersivas y funcionales. Hemos logrado superar las limitaciones de los chatbots tradicionales (basados en reglas) para ofrecer un asistente que *entiende*, *ejecuta* acciones reales de negocio y *se comunica* de manera casi humana.
