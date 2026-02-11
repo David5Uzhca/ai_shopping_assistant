@@ -188,8 +188,8 @@ La arquitectura modular basada en GraphQL facilita la escalabilidad, permitiendo
 
 **Equipo de Desarrollo:**
 *   **Juan David Uzhca** - *Ingeniero Backend & AI Integration* - [juandaviduzhca@hotmail.com](mailto:juandaviduzhca@hotmail.com)
-*   **Domenika Sofia Delgado** - *Frontend Developer & UX/UI* - [domenika.delgado@est.ups.edu.ec](mailto:domenika.delgado@est.ups.edu.ec)
-*   **Irar Nankamai** - *Database Architect* - [irar.nankamai@est.ups.edu.ec](mailto:irar.nankamai@est.ups.edu.ec)
+*   **Domenika Sofia Delgado** - *Frontend Developer & UX/UI* - [ddelgadoi@est.ups.edu.ec](mailto:ddelgadoi@est.ups.edu.ec)
+*   **Irar Nankamai** - *Database Architect* - [inankamai@est.ups.edu.ec](mailto:inankamai@est.ups.edu.ec)
 
 **GIT HUB:** [AI Shopping Assistant](https://github.com/David5Uzhca/ai_shopping_assistant)
 

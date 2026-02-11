@@ -19,8 +19,8 @@ load_dotenv(".env")
 # --- Gemini Configuration ---
 api_key = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else None
-MODEL_ID = "gemini-3-flash-preview"
-MODEL_FALLBACK = "gemini-2.0-flash-exp"
+MODEL_ID = "gemini-2.5-flash"
+MODEL_FALLBACK = "gemini-2.0-flash"
 
 # Session Storage
 chat_sessions: Dict[str, object] = {}
